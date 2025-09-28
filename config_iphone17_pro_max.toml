@@ -1,0 +1,37 @@
+[search]
+device_family = "iphone_17_pro"
+models = [
+    "MFYM4X/A", # Pro Max 256GB Silver
+    "MFYN4X/A", # Pro Max 256GB Cosmic Orange
+    "MFYP4X/A", # Pro Max 256GB Deep Blue
+    "MFYQ4X/A", # Pro Max 512GB Silver
+    "MFYU4X/A", # Pro Max 512GB Deep Blue
+    "MFYT4X/A", # Pro Max 512GB Cosmic Orange
+    "MFYW4X/A", # Pro Max 1TB Cosmic Orange
+    "MFYX4X/A", # Pro Max 1TB Deep Blue
+    "MFYV4X/A", # Pro Max 1TB Silver
+    "MFYY4X/A", # Pro Max 2TB Silver
+    "MG004X/A", # Pro Max 2TB Cosmic Orange
+    "MG014X/A"  # Pro Max 2TB Deep Blue
+]
+carriers = []
+country_code = "my"
+zip_code = "55188"
+stores = ["R742"]
+
+[general]
+polling_interval_seconds = 120
+report_after_n_counts = 30
+data_path = "data_iphone17_pro_max.csv"
+log_path = "log_iphone17_pro_max.txt"
+randomize_proxies = false
+
+[telegram]
+username = "@rekki0"
+api_id = "24628242"
+api_hash = "4bfe5c5fcf3047a89128402e89fe0193"
+bot_token = "8465465163:AAESrhxsx_aU3DmJIb_LYLJUduJwpYnVMP8"
+session_name = "iPhone17ProMaxFinder"
+group_id = "-1003191053710"
+topic_key = "iphone_17_pro_max"
+topics = { iphone_air = 5, iphone_17 = 2, iphone_17_pro = 3, iphone_17_pro_max = 4 }

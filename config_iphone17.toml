@@ -1,0 +1,35 @@
+[search]
+device_family = "iphone_17"
+models = [
+    "MG6J4X/A", # 256GB Black
+    "MG6K4X/A", # 256GB White
+    "MG6L4X/A", # 256GB Mist Blue
+    "MG6M4X/A", # 256GB Lavender
+    "MG6N4X/A", # 256GB Sage
+    "MG6P4X/A", # 512GB Black
+    "MG6Q4X/A", # 512GB White
+    "MG6T4X/A", # 512GB Mist Blue
+    "MG6U4X/A", # 512GB Lavender
+    "MG6V4X/A"  # 512GB Sage
+]
+carriers = []
+country_code = "my"
+zip_code = "55188"
+stores = ["R742"]
+
+[general]
+polling_interval_seconds = 120
+report_after_n_counts = 30
+data_path = "data_iphone17.csv"
+log_path = "log_iphone17.txt"
+randomize_proxies = false
+
+[telegram]
+username = "@rekki0"
+api_id = "24628242"
+api_hash = "4bfe5c5fcf3047a89128402e89fe0193"
+bot_token = "8465465163:AAESrhxsx_aU3DmJIb_LYLJUduJwpYnVMP8"
+session_name = "iPhone17Finder"
+group_id = "-1003191053710"
+topic_key = "iphone_17"
+topics = { iphone_air = 5, iphone_17 = 2, iphone_17_pro = 3, iphone_17_pro_max = 4 }

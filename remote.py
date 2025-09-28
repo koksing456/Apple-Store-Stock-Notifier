@@ -4,6 +4,9 @@
 import os
 import asyncio
 from pathlib import Path
+from typing import Awaitable, Callable, Optional
+
+import requests
 from requests.exceptions import ConnectionError as RequestConnectionError
 from telethon import TelegramClient, events, types, errors
 from monitor import Monitor, CallbacksAbstract
@@ -24,19 +27,38 @@ async def send(client, username: str, message: str, retry_count=0):
             f"ConnectionError on sending Telegram message, waiting {backoff_time} seconds to try again. Error: {error}"
         )
         await asyncio.sleep(backoff_time)
-        await send(client, message, retry_count + 1)
+        await send(client, username, message, retry_count + 1)
 
 
 # setup callbacks
 class Callbacks(CallbacksAbstract):
-    def __init__(self, client: TelegramClient, username: str) -> None:
+    def __init__(
+        self,
+        client: TelegramClient,
+        username: str,
+        topic_notifier: Optional[Callable[[str, str], Awaitable[bool]]],
+        topic_key: Optional[str],
+    ) -> None:
         self.client = client
         self.username = username
         self.meta = (client, username)
+        self.topic_notifier = topic_notifier
+        self.topic_key = topic_key
         super().__init__()
 
+    async def _notify_topic(self, message: str) -> bool:
+        if self.topic_notifier and self.topic_key:
+            try:
+                delivered = await self.topic_notifier(self.topic_key, message)
+            except Exception as error:  # pragma: no cover - log and fall back
+                print(f"Failed to notify topic: {error}")
+                delivered = False
+            if delivered:
+                return True
+        await send(*self.meta, message)
+        return False
+
     async def on_start(self):
-        # inform the user that monitoring has commenced
         message = f"New monitoring session!\nIP address: {get_ip()}"
         print(message)
         await send(*self.meta, message)
@@ -45,15 +67,13 @@ class Callbacks(CallbacksAbstract):
         await send(*self.meta, "This bot is done scouting the shelves, goodbye!")
 
     async def on_stock_available(self, message):
-        await send(*self.meta, message)
+        await self._notify_topic(message)
 
     async def on_appointment_available(self, message):
         await send(*self.meta, message)
 
     async def on_newly_available(self):
-        for i in range(3):
-            await send(*self.meta, f"AVAILABLE! {i}")
-            await asyncio.sleep(1)
+        await self._notify_topic("✅ Stock just flipped to AVAILABLE!")
 
     async def on_auto_report(self, report: str):
         await send(*self.meta, report)
@@ -75,7 +95,6 @@ class Callbacks(CallbacksAbstract):
         await self.send_logfile(logfile_path)
 
     async def send_logfile(self, logfile_path):
-        """Helper function to send a logfile."""
         if logfile_path is not None:
             async with self.client.action(self.username, "document") as action:
                 await self.client.send_file(
@@ -102,11 +121,24 @@ class TelegramConnection:
         self.bot_token = telegramconfig.get("bot_token")
         self.session_name = telegramconfig.get("session_name")
         self.username = telegramconfig.get("username")
+        self.group_id = telegramconfig.get("group_id") or None
+        self.topic_key = telegramconfig.get("topic_key") or None
+        raw_topics = telegramconfig.get("topics", {})
+        self.topic_map = {}
+        if isinstance(raw_topics, dict):
+            for key, value in raw_topics.items():
+                try:
+                    self.topic_map[key] = int(value)
+                except (TypeError, ValueError):
+                    print(f"Ignoring invalid topic id for key '{key}': {value}")
 
         # creating a Telegram session and assigning it to a variable client
         client = TelegramClient(self.session_name, self.api_id, self.api_hash)
         client.parse_mode = "html"
         client.start(bot_token=self.bot_token)
+
+        self.client = client
+        self.bot_api_base = f"https://api.telegram.org/bot{self.bot_token}"
 
         # registering the possible user commands
         commands_available = {
@@ -130,7 +162,12 @@ class TelegramConnection:
         print(commands_available_txt)
 
         # set up the monitor
-        callbacks = Callbacks(client, self.username)
+        callbacks = Callbacks(
+            client,
+            self.username,
+            self.send_to_topic,
+            self.topic_key,
+        )
         self.monitor = Monitor(callbacks)
 
         # registering Telegram responses to the requests ((?i) makes it case insensitive)
@@ -261,9 +298,46 @@ class TelegramConnection:
                         f"If you were trying to set a new {configurationhandler.configfile_path}, make sure the file is named exactly that."
                     )
 
-        # ensure client is in class state
-        self.client = client
+        # ensure client is in class state (already assigned above)
 
+    async def send_to_topic(self, topic_key: str, message: str) -> bool:
+        """Send a message to the configured forum topic or fall back to DM."""
+
+        if self.group_id and topic_key in self.topic_map:
+            thread_id = self.topic_map[topic_key]
+            if thread_id <= 0:
+                print(
+                    f"Configured topic id {thread_id} for '{topic_key}' is invalid; falling back to DM."
+                )
+            else:
+                loop = asyncio.get_running_loop()
+
+                def post_message() -> bool:
+                    url = f"{self.bot_api_base}/sendMessage"
+                    payload = {
+                        "chat_id": self.group_id,
+                        "message_thread_id": thread_id,
+                        "text": message,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    }
+                    try:
+                        response = requests.post(url, json=payload, timeout=10)
+                        if response.ok:
+                            return True
+                        print(
+                            f"Failed to send to topic '{topic_key}': {response.status_code} {response.text}"
+                        )
+                    except Exception as error:  # pragma: no cover
+                        print(f"Failed to send to topic '{topic_key}': {error}")
+                    return False
+
+                if await loop.run_in_executor(None, post_message):
+                    return True
+
+        if self.username:
+            await send(self.client, self.username, message)
+        return False
     def start(self):
         # start the monitoring
         with self.client as client:
