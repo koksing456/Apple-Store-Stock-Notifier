@@ -143,11 +143,13 @@ class StoreChecker:
         # in the store and print their status.
         message = ""
 
-        def getlink(storePickupProductTitle):
-            link = self.PRODUCT_BUY_URL.format(self.base_url, "iphone-14")
-            if "Pro" in storePickupProductTitle:
-                link += "-pro"
-            return link
+        def getlink(_: str) -> str:
+            """Derive the Apple buy URL for the configured device family."""
+
+            family_slug = (self.configuration.device_family or "iphone-14").replace(
+                "_", "-"
+            )
+            return self.PRODUCT_BUY_URL.format(self.base_url, family_slug)
 
         for store in stores:
             if verbose:
