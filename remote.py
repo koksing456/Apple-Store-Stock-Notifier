@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Directly executable script for notifications and remote interaction via a Telegram bot."""
 
+import argparse
 import os
 import asyncio
 from pathlib import Path
@@ -168,7 +169,9 @@ class TelegramConnection:
             self.send_to_topic,
             self.topic_key,
         )
-        self.monitor = Monitor(callbacks)
+        self.monitor = Monitor(
+            callbacks, path_to_config_file=str(configurationhandler.configfile_path)
+        )
 
         # registering Telegram responses to the requests ((?i) makes it case insensitive)
         # status handler
@@ -356,6 +359,18 @@ class TelegramConnection:
                 reboot_pi()
 
 
-if __name__ == "__main__":
-    remote = TelegramConnection(ConfigHandler())
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Apple Store stock notifier bot")
+    parser.add_argument(
+        "--config",
+        default="./config.toml",
+        help="Path to the configuration TOML file",
+    )
+    args = parser.parse_args()
+
+    remote = TelegramConnection(ConfigHandler(args.config))
     remote.start()
+
+
+if __name__ == "__main__":
+    main()
