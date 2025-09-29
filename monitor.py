@@ -125,7 +125,16 @@ class Monitor:
                     )
 
                     # print the report
-                    report_message = f"<b>Status Report</b> \nIn the past {past_time_formatter(count, polling_interval_seconds)}, iPhones were available {count_availables} out of {len(found_availables)} times. \nThe average processing time was {processing_time_average} seconds."
+                    family = (
+                        self.confighandler.searchconfig.device_family or "iPhone"
+                    )
+                    family_label = family.replace("_", " ").title()
+                    report_message = (
+                        f"<b>Status Report – {family_label}</b>\n"
+                        f"In the past {past_time_formatter(count, polling_interval_seconds)},"
+                        f" {family_label} units were available {count_availables} out of {len(found_availables)} checks.\n"
+                        f"Average processing time: {processing_time_average} seconds."
+                    )
                     if self.confighandler.get(["general", "randomize_proxies"]):
                         report_message += f"\nProxy status: {self.get_proxystatus()}"
                     await self.callbacks.on_auto_report(report_message)
