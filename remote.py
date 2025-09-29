@@ -15,8 +15,10 @@ from utils import reboot_pi, get_ip
 from confighandler import ConfigHandler
 
 
-async def send(client, username: str, message: str, retry_count=0):
-    """Send a Telegram message"""
+async def send(client, username: str | None, message: str, retry_count=0):
+    """Send a Telegram message if a username/chat is configured."""
+    if not username:
+        return
     try:
         await client.send_message(username, message)
     except RequestConnectionError as error:
@@ -29,6 +31,8 @@ async def send(client, username: str, message: str, retry_count=0):
         )
         await asyncio.sleep(backoff_time)
         await send(client, username, message, retry_count + 1)
+    except ValueError as error:
+        print(f"Skipping direct message; unable to resolve '{username}': {error}")
 
 
 # setup callbacks
@@ -62,6 +66,7 @@ class Callbacks(CallbacksAbstract):
     async def on_start(self):
         message = f"New monitoring session!\nIP address: {get_ip()}"
         print(message)
+        await self._notify_topic(message)
         await send(*self.meta, message)
 
     async def on_stop(self):
@@ -77,6 +82,7 @@ class Callbacks(CallbacksAbstract):
         await self._notify_topic("✅ Stock just flipped to AVAILABLE!")
 
     async def on_auto_report(self, report: str):
+        await self._notify_topic(report)
         await send(*self.meta, report)
 
     async def on_proxy_depletion(self, message: str):
